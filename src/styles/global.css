@@ -1,0 +1,105 @@
+/* ── Cue — "The Stove as an Orchestral Score" ────────────────────────────────
+   A hand-painted midcentury enamelware cookbook plate crossed with a conductor's
+   score. Warm, speckled, hand-cranked. Two families (Rokkitt + Space Mono), cream
+   + one ink + one ember accent, NO RED EVER. This stylesheet is the surface layer;
+   the artful/mechanic bits (Maestro, wordmark, the Score, gauges, stove-feed) are
+   inline SVG. */
+
+@font-face {
+  font-family: 'Rokkitt';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/Rokkitt.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Space Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/SpaceMono-Regular.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Space Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/SpaceMono-Bold.ttf') format('truetype');
+}
+
+:root {
+  /* palette (locked) */
+  --cream: #f6f1e7;
+  --creamHi: #fdfaf2;
+  --panel: #efe7d6;
+  --panel2: #e6dbc6;
+  --rim: #d8cbb2;
+  --ink: #3a2a22;
+  --ink2: #5e463a;
+  --ink3: #7a6152;
+  --inkSoft: #9a8571;
+  --ember: #e39a3c;
+  --emberHi: #f4c67d;
+  --emberDp: #bc7723;
+  --brass: #c79a54;
+  --brassHi: #e1c185;
+  --brassDp: #8c6b2e;
+  --deep: #2a1d17;
+  --stage: #33241c;
+  --stage2: #412e23;
+  --still: #8e877a;
+  --stillDp: #5c564c;
+
+  --slab: 'Rokkitt', 'Rokkitt Fallback', Georgia, 'Times New Roman', serif;
+  --mono: 'Space Mono', 'SFMono-Regular', ui-monospace, 'Courier New', monospace;
+
+  --shadow-soft: 0 3px 10px rgba(58, 42, 34, 0.16);
+  --shadow-lift: 0 8px 22px rgba(58, 42, 34, 0.18);
+  --shadow-inset: inset 0 1px 0 rgba(253, 250, 242, 0.8);
+
+  --r-lg: 20px;
+  --r-md: 16px;
+  --r-sm: 11px;
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--slab);
+  font-weight: 500;
+  font-size: 17px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior: none;
+}
+
+/* subtle whole-app enamel micro-grain */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.035;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--slab);
