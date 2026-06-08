@@ -103,3 +103,251 @@ body::after {
 
 h1, h2, h3, h4 {
   font-family: var(--slab);
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+button {
+  font-family: var(--slab);
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+input, textarea {
+  font-family: var(--slab);
+  color: var(--ink);
+}
+
+.mono {
+  font-family: var(--mono);
+  letter-spacing: 0.02em;
+}
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--inkSoft);
+}
+
+/* ── the signature surface: a rounded ENAMEL panel ─────────────────────────
+   gloss sheen (::before, upper-left specular) + rolled rim (border + inset
+   highlight) + spatter (::after speckle) + warm drop shadow. */
+.enamel {
+  position: relative;
+  background: linear-gradient(180deg, var(--cream) 0%, var(--panel) 100%);
+  border: 1.5px solid var(--rim);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-soft), var(--shadow-inset);
+  isolation: isolate;
+}
+.enamel--hi {
+  background: linear-gradient(180deg, var(--creamHi) 0%, var(--cream) 100%);
+}
+.enamel--recessed {
+  background: linear-gradient(180deg, var(--panel) 0%, var(--panel2) 100%);
+}
+.enamel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(120% 90% at 32% 22%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.12) 30%, rgba(255, 255, 255, 0) 62%);
+  z-index: 1;
+}
+.enamel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0.5;
+  z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='1' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -14 3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23s)'/%3E%3C/svg%3E");
+}
+.enamel > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* chips / buttons */
+.chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 1.6px solid var(--ink);
+  background: var(--cream);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+  box-shadow: var(--shadow-soft);
+}
+.chip:active {
+  transform: translateY(1px);
+}
+.chip--accent {
+  background: linear-gradient(180deg, var(--emberHi) 0%, var(--ember) 50%, var(--emberDp) 100%);
+  color: var(--deep);
+  border-color: var(--emberDp);
+}
+.chip--ghost {
+  background: transparent;
+  box-shadow: none;
+}
+.chip--sel {
+  background: linear-gradient(180deg, var(--emberHi), var(--ember) 55%, var(--emberDp));
+  color: var(--deep);
+  border-color: var(--emberDp);
+}
+.chip--mono {
+  font-family: var(--mono);
+  font-weight: 700;
+  border-width: 1.4px;
+  border-color: var(--rim);
+  color: var(--ink2);
+  font-size: 13px;
+  padding: 8px 14px;
+  background: var(--panel);
+}
+.chip[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* the live-figure enamel/brass TAG (flip-rail order tag with a notch + accent bar) */
+.tag {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 9px 16px 9px 22px;
+  min-width: 120px;
+  background: var(--creamHi);
+  border-radius: 10px;
+  box-shadow: var(--shadow-soft);
+  clip-path: polygon(14px 0, 100% 0, 100% 100%, 14px 100%, 0 50%);
+}
+.tag__label {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--inkSoft);
+}
+.tag__val {
+  font-family: var(--slab);
+  font-weight: 800;
+  font-size: 17px;
+  color: var(--ink);
+  line-height: 1;
+}
+.tag__accent {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--ember);
+}
+.tag--still .tag__accent { background: var(--still); }
+
+/* split-flap numeral tile (dark aubergine, cream mono, ember seam) */
+.flap {
+  display: inline-flex;
+  gap: 3px;
+}
+.flap__tile {
+  position: relative;
+  min-width: 22px;
+  padding: 3px 5px;
+  border-radius: 4px;
+  background: var(--deep);
+  color: var(--creamHi);
+  font-family: var(--mono);
+  font-weight: 700;
+  text-align: center;
+  box-shadow: var(--shadow-soft);
+}
+.flap__tile::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.42);
+  box-shadow: 0 -1.1px 0 rgba(188, 119, 35, 0.55);
+}
+.flap__sep {
+  align-self: center;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-weight: 700;
+}
+
+/* live "pill" (status) */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1.4px solid var(--rim);
+  background: var(--panel);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--ink2);
+}
+.pill--live {
+  border-color: var(--ember);
+  color: var(--emberDp);
+}
+.pill--live .dot { background: var(--ember); }
+.pill--offline {
+  border-color: var(--rim);
+  color: var(--stillDp);
+  background: var(--panel2);
+}
+.pill .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--inkSoft);
+}
+
+.hr-ember {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--ember);
+  border: none;
+}
+
+/* focus-visible for keyboard users */
+:focus-visible {
+  outline: 2.5px solid var(--emberDp);
+  outline-offset: 2px;
+}
+
+/* scrollbars, warm */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--rim); border-radius: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
