@@ -117,3 +117,83 @@ export function schedule(meal: MealSpec): Schedule {
     const cookOnly = times.filter((x) => x.step.kind === 'cook' || x.step.kind === 'prep');
     const restT = times.find((x) => x.step.kind === 'rest');
     if (cookOnly.length) {
+      const first = cookOnly[0].start;
+      const last = cookOnly[cookOnly.length - 1].end;
+      const dur = last - first;
+      const long = dur >= 1500;
+      const label = long ? `${p.dish.name.toLowerCase()} · ${Math.round(dur / 60)}m` : p.dish.name;
+      const lead = p.cookSteps.find((s) => s.cue)?.cue;
+      const done = [...p.cookSteps].reverse().find((s) => s.doneCue)?.doneCue;
+      steps.push({
+        key: `${p.dish.id}-main`, dishId: p.dish.id, stepId: 'main', label,
+        lane: home, laneIndex: laneIndex(home), startSec: first, endSec: last, durationSec: dur,
+        attention: cookOnly.some((x) => x.step.attention === 'active') ? 'active' : 'passive',
+        kind: 'cook', cue: lead, doneCue: done, sensorHint: p.cookSteps.find((s) => s.sensorHint)?.sensorHint, dishName: p.dish.name,
+      });
+    }
+    if (restT) {
+      steps.push({
+        key: `${p.dish.id}-rest`, dishId: p.dish.id, stepId: restT.step.id, label: 'rest',
+        lane: home, laneIndex: laneIndex(home), startSec: restT.start, endSec: restT.end, durationSec: restT.step.durationSec,
+        attention: 'passive', kind: 'rest', cue: restT.step.cue, dishName: p.dish.name,
+      });
+    }
+  }
+
+  // ── serialise plating on hands from R ──────────────────────────────────────
+  const handsLane = 'hands';
+  let plateT = R;
+  const plateOrder = [...plans].sort((a, b) => startAt[a.dish.id] - startAt[b.dish.id]);
+  for (const p of plateOrder) {
+    if (!p.plateStep) continue;
+    const s = plateT;
+    const e = s + p.plateStep.durationSec;
+    steps.push({
+      key: `${p.dish.id}-plate`, dishId: p.dish.id, stepId: p.plateStep.id, label: 'plate',
+      lane: handsLane, laneIndex: laneIndex(handsLane), startSec: s, endSec: e, durationSec: p.plateStep.durationSec,
+      attention: 'active', kind: 'plate', dishName: p.dish.name,
+    });
+    plateT = e;
+  }
+  const deadlineSec = Math.max(R, plateT);
+  const finishSpreadSec = deadlineSec - R;
+
+  // ── the naïve (no-conductor) spread: all started together, finish at own length
+  const readyLens = plans.map((p) => p.readyLen);
+  const naiveSpreadSec = Math.max(...readyLens) - Math.min(...readyLens);
+
+  // label lanes by the (longest) dish that lives on them
+  for (const lane of lanes) {
+    if (lane.glyph === 'hands') continue;
+    const on = plans.filter((p) => homeLane[p.dish.id] === lane.id).sort((a, b) => b.readyLen - a.readyLen);
+    if (on.length) lane.label = `${lane.id} · ${on[0].dish.name.toLowerCase()}`;
+    else if (lane.glyph === 'oven') lane.label = 'oven · free';
+  }
+
+  return {
+    steps: steps.sort((a, b) => a.startSec - b.startSec),
+    lanes,
+    startSec: Math.min(...steps.map((s) => s.startSec), 0),
+    readySec: R,
+    deadlineSec,
+    finishSpreadSec,
+    naiveSpreadSec,
+    feasible: true,
+    notes,
+  };
+}
+
+/** derive live note-states from the current elapsed time. */
+export function noteStateAt(step: SchedStep, nowSec: number): 'plan' | 'active' | 'done' | 'rest' {
+  if (step.kind === 'rest') return nowSec >= step.endSec ? 'done' : 'rest';
+  if (nowSec >= step.endSec) return 'done';
+  if (nowSec >= step.startSec) return 'active';
+  return 'plan';
+}
+
+export function fmtClock(sec: number): string {
+  const s = Math.max(0, Math.round(sec));
+  const m = Math.floor(s / 60);
+  const ss = s % 60;
+  return `${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+}
