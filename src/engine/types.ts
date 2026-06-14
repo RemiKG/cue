@@ -112,3 +112,52 @@ export interface DivergenceEvent {
 }
 
 export interface MovedNote {
+  key: string;
+  label: string;
+  fromAt: number; // 0..1 old position
+  toAt: number; // 0..1 new position
+}
+
+export interface ReplanResult {
+  schedule: Schedule;
+  proposalText: string;
+  moved: MovedNote[];
+  stillLandsTogether: boolean;
+  newDeadlineSec: number;
+  prevDeadlineSec: number;
+  replanLatencyMs: number;
+  source: 'qwen' | 'on-device';
+}
+
+// ── the Kitchen Score log (append-only NDJSON) ───────────────────────────────
+export type LogChannel = 'local' | 'cloud';
+export interface LogEntry {
+  t: number; // elapsed seconds into the cook
+  ts: number; // wall-clock ms (for the file)
+  event: string;
+  channel: LogChannel;
+  kind: 'plan' | 'cue' | 'state' | 'replan' | 'safety' | 'offline' | 'done' | 'note';
+  meta?: Record<string, unknown>;
+}
+
+// ── on-device perception output ──────────────────────────────────────────────
+export type PanReadState = 'idle' | 'warming' | 'simmer' | 'boil' | 'browning' | 'golden' | 'scorch' | 'steam' | 'ready';
+export interface PanStateEvent {
+  region: number; // pan index
+  dishId?: string;
+  state: PanReadState;
+  frac: number; // doneness fraction 0..1
+  confidence: number; // 0..1
+  heat: number; // audio-derived heat proxy 0..1
+  hedge: boolean; // true ⇒ Cue is unsure and should ask
+  atSec: number;
+}
+
+export interface AudioState {
+  rms: number;
+  centroidHz: number;
+  heat: number; // 0..1 sizzle-pitch → heat proxy
+  klass: 'quiet' | 'sizzle' | 'boil' | 'fry' | 'alarm';
+  smokeAlarm: boolean;
+  voice: boolean; // VAD
+}
