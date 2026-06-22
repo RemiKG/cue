@@ -209,3 +209,172 @@ export const useCue = create<CueState>((set, get) => ({
     ensureAudio();
     primeVoices();
     const settings = get().settings;
+    set({ mode: 'live', speed: 1, riceBrown: true, meal: defaultMeal(true, { burners: settings.kitchen.burners, oven: settings.kitchen.oven, hands: 2 }) });
+    set({ screen: 'setmeal' });
+  },
+
+  setMealFromText: (text) => {
+    const { dishes } = groundMeal(text);
+    if (dishes.length) {
+      const hasBrown = dishes.some((d) => d.recipeId === 'brown-rice');
+      set({ meal: { dishes, resources: get().meal?.resources || { burners: 3, oven: true, hands: 2 } }, riceBrown: hasBrown });
+    }
+  },
+  setDishes: (dishes) => set({ meal: { dishes, resources: get().meal?.resources || { burners: 3, oven: true, hands: 2 } } }),
+  setRiceBrown: (brown) => {
+    const meal = get().meal;
+    if (!meal) return;
+    const dishes = meal.dishes.map((d) => (d.recipeId === 'brown-rice' || d.recipeId === 'white-rice' ? { ...d, recipeId: brown ? 'brown-rice' : 'white-rice' } : d));
+    set({ riceBrown: brown, meal: { ...meal, dishes } });
+  },
+  setResources: (r) => {
+    const meal = get().meal;
+    if (!meal) return;
+    set({ meal: { ...meal, resources: { ...meal.resources, ...r } } });
+  },
+
+  buildScore: async () => {
+    const meal = get().meal;
+    if (!meal) return;
+    const sch = buildSchedule(meal);
+    set({ schedule: sch, firedCues: {}, dishesHot: 0, finished: false, currentCue: '' });
+    get().log1({ t: 0, kind: 'plan', channel: get().cloud.available ? 'cloud' : 'local', event: `plan built · ${meal.dishes.length} dishes, finish ${fmtClock(sch.deadlineSec)}`, meta: { deadlineSec: sch.deadlineSec, spread: sch.finishSpreadSec } });
+    cloudMeter.reset();
+    set({ screen: 'score' });
+    get().beginCook();
+  },
+
+  beginCook: () => {
+    const st = get();
+    if (st._timer) window.clearInterval(st._timer);
+    set({ running: true, finished: false, nowSec: 0, _wall: performance.now(), maestroPose: 'tap' });
+    const timer = window.setInterval(() => tick(set, get), 100);
+    set({ _timer: timer });
+  },
+
+  stopCook: () => {
+    const st = get();
+    if (st._timer) window.clearInterval(st._timer);
+    cancelSpeech();
+    set({ running: false, _timer: null });
+    if (st._reflex) st._reflex.stop();
+    if (st._capture) stopCapture(st._capture);
+    set({ _reflex: null, _capture: null });
+  },
+
+  injectDivergence: async (kind) => {
+    const { meal, schedule: sch, nowSec, settings } = get();
+    if (!meal || !sch) return;
+    let event: DivergenceEvent;
+    if (kind === 'ingredient-swap') {
+      const rice = meal.dishes.find((d) => d.recipeId === 'white-rice');
+      if (!rice) { await get().injectDivergence('behind'); return; }
+      event = { kind, atSec: nowSec, dishId: rice.id, newRecipeId: 'brown-rice' };
+    } else if (kind === 'behind') {
+      event = { kind, atSec: nowSec, behindSec: 120 };
+    } else {
+      const salmon = meal.dishes.find((d) => getRecipe(d.recipeId)?.tags.includes('fish')) || meal.dishes[0];
+      event = { kind: 'ran-hot', atSec: nowSec, dishId: salmon?.id };
+    }
+    set({ maestroPose: 'raise' });
+    // Qwen conductor narrates on top when available; feasibility is always local.
+    let qwenProposal: string | null = null;
+    if (get().cloud.available && get().online) {
+      const r = await conductWithQwen(sch, event);
+      qwenProposal = r?.proposal || null;
+    }
+    const result = reoptimize({ meal, prev: sch, event, nowSec, qwenProposal });
+    if (kind === 'ingredient-swap') {
+      // reflect the swap in the meal so future edits stay consistent
+      set({ meal: { ...meal, dishes: meal.dishes.map((d) => (d.id === event.dishId ? { ...d, recipeId: 'brown-rice', name: 'Brown rice' } : d)) }, riceBrown: true });
+    }
+    set({ replan: { ...result, kind } });
+    get().log1({ t: Math.round(nowSec), kind: 'replan', channel: result.source === 'qwen' ? 'cloud' : 'local', event: `re-plan: ${kind === 'ingredient-swap' ? 'brown rice' : kind}, → ${fmtClock(result.newDeadlineSec)}`, meta: { latencyMs: result.replanLatencyMs } });
+    // in the self-driving demo, the head chef nods after a beat so the loop flows
+    if (get().mode === 'demo') window.setTimeout(() => { if (get().replan) get().approveReplan(); }, 2600);
+  },
+
+  approveReplan: () => {
+    const { replan } = get();
+    if (!replan) return;
+    set({ schedule: replan.schedule, replan: null, maestroPose: 'tap', firedCues: { ...get().firedCues } });
+    get().log1({ t: Math.round(get().nowSec), kind: 'replan', channel: 'local', event: `re-conducted · still lands together ${replan.stillLandsTogether ? '✓' : '⚠'} ${fmtClock(replan.newDeadlineSec)}` });
+    if (get().screen !== 'score') set({ screen: 'score' });
+  },
+  dismissReplan: () => set({ replan: null, maestroPose: 'tap' }),
+
+  answerAsk: (golden) => {
+    const { ask, calibrations } = get();
+    if (!ask) return;
+    const c: Calibrations = { ...calibrations, brownBias: Math.max(-1, Math.min(1, calibrations.brownBias + (golden ? 0.05 : -0.05))), perDish: { ...calibrations.perDish, [ask.recipeId]: { goldenFrac: golden ? 0.7 : 0.85 } }, updatedAt: Date.now() };
+    set({ calibrations: c, ask: null, maestroPose: 'tap' });
+    void saveCalibrations(c);
+    get().log1({ t: Math.round(get().nowSec), kind: 'state', channel: 'local', event: `you answered: ${golden ? 'looks golden' : '+30s'} · learning your stove` });
+  },
+
+  clearSafety: () => set({ safety: null }),
+
+  toggleOffline: (force) => {
+    const next = force ?? !get().offlineForced;
+    set({ offlineForced: next, online: navigator.onLine && !next });
+    if (next) {
+      get().log1({ t: Math.round(get().nowSec), kind: 'offline', channel: 'local', event: 'offline — conducting from cached score' });
+    } else {
+      get().log1({ t: Math.round(get().nowSec), kind: 'offline', channel: 'cloud', event: `back online → re-optimizing, back-filling ${get().queueDepth} reads` });
+      set({ queueDepth: 0 });
+    }
+  },
+
+  updateSettings: (patch) => {
+    const settings = { ...get().settings, ...patch } as Settings;
+    set({ settings });
+    void saveSettings(settings);
+  },
+  restoreDefaults: () => { set({ settings: DEFAULT_SETTINGS }); void saveSettings(DEFAULT_SETTINGS); },
+
+  exportScore: () => {
+    const nd = toNdjson(get().log);
+    const blob = new Blob([nd], { type: 'application/x-ndjson' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `kitchen-score-${get().sessionId}.ndjson`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  },
+
+  reset: () => {
+    get().stopCook();
+    set({ screen: 'landing', mode: 'idle', schedule: null, replan: null, ask: null, safety: null, log: [], finished: false, nowSec: 0, currentCue: '', dishesHot: 0, sessionId: mkId(), _demoFlags: { diverged: false, wentOffline: false } });
+  },
+}));
+
+// ── the conductor tick ───────────────────────────────────────────────────────
+function tick(set: (p: Partial<CueState>) => void, get: () => CueState): void {
+  const st = get();
+  if (!st.running || !st.schedule) return;
+  const now = performance.now();
+  const dtWall = (now - st._wall) / 1000;
+  set({ _wall: now });
+  if (st.replan) return; // paused awaiting approval (Maestro has the baton up)
+
+  const nowSec = st.nowSec + dtWall * st.speed;
+  const sch = st.schedule;
+
+  // fire due cues
+  const fired = { ...st.firedCues };
+  let currentCue = st.currentCue;
+  let pose: Pose = st.maestroPose === 'raise' ? 'tap' : st.maestroPose;
+  let cueLatencyMs = st.cueLatencyMs;
+  for (const step of sch.steps) {
+    if (step.cue && !fired[step.key] && nowSec >= step.startSec && step.startSec >= 0) {
+      fired[step.key] = true;
+      currentCue = step.cue;
+      // cue latency = the LOCAL trigger → local audio cue (the wooden chime), measured
+      // on-device. The split-second cue fires locally, with no cloud round-trip.
+      const t0 = performance.now();
+      cueChime();
+      const ac = ensureAudio();
+      cueLatencyMs = Math.max(6, Math.round(performance.now() - t0 + (ac ? ac.baseLatency * 1000 : 14)));
+      const useQwen = get().cloud.available && get().online && get().settings.voice.voiceId.startsWith('qwen');
+      if (useQwen) void speakViaQwen(step.cue, get().settings.voice.voiceId, {});
