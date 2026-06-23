@@ -378,3 +378,151 @@ function tick(set: (p: Partial<CueState>) => void, get: () => CueState): void {
       cueLatencyMs = Math.max(6, Math.round(performance.now() - t0 + (ac ? ac.baseLatency * 1000 : 14)));
       const useQwen = get().cloud.available && get().online && get().settings.voice.voiceId.startsWith('qwen');
       if (useQwen) void speakViaQwen(step.cue, get().settings.voice.voiceId, {});
+      else speak(step.cue, {});
+      pose = 'tap';
+      get().log1({ t: Math.round(nowSec), kind: 'cue', channel: 'local', event: step.cue });
+    }
+  }
+
+  // dishes hot (plated)
+  const plates = sch.steps.filter((s) => s.kind === 'plate');
+  const dishesHot = plates.filter((s) => nowSec >= s.endSec).length;
+
+  // demo path: synthesize feed dials + scripted disruptions
+  let pans = st.pans;
+  if (st.mode === 'demo') {
+    pans = feedFromSchedule(sch, nowSec);
+    const flags = st._demoFlags;
+    // money shot at ~6 min (white→brown)
+    if (!flags.diverged && nowSec >= 360) {
+      set({ _demoFlags: { ...flags, diverged: true } });
+      void get().injectDivergence('ingredient-swap');
+    }
+    // graceful-degradation beat near the end: cut the network, a boil-over fires
+    // locally, then reconnect + re-optimize — the whole Track-5 core, shown live.
+    if (!flags.wentOffline && flags.diverged && !get().replan && nowSec >= sch.deadlineSec - 360) {
+      set({ _demoFlags: { ...flags, wentOffline: true } });
+      get().toggleOffline(true);
+      triggerBoilOver(set, get, nowSec);
+      window.setTimeout(() => { if (get().offlineForced) get().toggleOffline(false); }, 3500);
+    }
+  }
+
+  // finale
+  if (nowSec >= sch.deadlineSec && !st.finished) {
+    set({ finished: true, running: true, nowSec: sch.deadlineSec, maestroPose: 'settle', dishesHot: plates.length, currentCue: 'Everything’s ready — plate now. It all lands hot.' });
+    speak('Everything is ready. Plate now — it all lands hot, together.');
+    get().log1({ t: Math.round(sch.deadlineSec), kind: 'done', channel: get().online && get().cloud.available ? 'cloud' : 'local', event: `ALL DONE · finish-spread ${sch.finishSpreadSec}s` });
+    if (st._timer) window.clearInterval(st._timer);
+    set({ _timer: null });
+    return;
+  }
+
+  set({ nowSec, firedCues: fired, currentCue, maestroPose: pose, dishesHot, pans });
+}
+
+function triggerBoilOver(set: (p: Partial<CueState>) => void, get: () => CueState, nowSec: number): void {
+  const t0 = performance.now();
+  woodenSpoonTap(); // LOCAL, zero cloud
+  const latency = Math.round(performance.now() - t0);
+  const alert = boilOverAlert('Pan 2');
+  set({ safety: alert });
+  get().log1({ t: Math.round(nowSec), kind: 'safety', channel: 'local', event: `boil-over pan 2 · off the heat · LOCAL ${latency + 120}ms` });
+  window.setTimeout(() => { if (get().safety?.kind === 'boil-over') set({ safety: null }); }, 6000);
+}
+
+// ── the LIVE camera path (real getUserMedia + on-device reflex) ──────────────
+function defaultRegions(): Region[] {
+  // three evenly-spaced pan regions across the lower cook-space, until/if the
+  // neural detector refines them.
+  return [
+    { x: 0.08, y: 0.42, w: 0.26, h: 0.42, role: 'pot', dishId: 'rice' },
+    { x: 0.38, y: 0.42, w: 0.26, h: 0.42, role: 'pan', dishId: 'salmon' },
+    { x: 0.68, y: 0.44, w: 0.24, h: 0.4, role: 'pan', dishId: 'beans' },
+  ];
+}
+function mapReflexToFeed(states: PanStateEvent[]): FeedPan[] {
+  const labels = ['RICE', 'SALMON', 'BEANS'];
+  return labels.map((label, i) => {
+    const s = states[i];
+    if (!s) return { frac: 0.08, state: 'idle', label };
+    const state = s.state === 'boil' || s.state === 'ready' ? (s.frac > 0.9 ? 'ready' : 'cook')
+      : s.state === 'scorch' ? 'hot' : s.state === 'idle' ? 'idle' : 'cook';
+    return { frac: s.frac, state: state as FeedPan['state'], label };
+  });
+}
+function handleLiveStates(states: PanStateEvent[], audio: AudioState | null): void {
+  const s = useCue.getState();
+  const pans = states.length ? mapReflexToFeed(states) : s.pans;
+  useCue.setState({ pans, audio });
+  // LOCAL safety — fires with zero cloud round-trip
+  if (audio?.smokeAlarm && s.safety?.kind !== 'smoke') {
+    smokeTaps();
+    useCue.setState({ safety: smokeAlert() });
+    s.log1({ t: Math.round(s.nowSec), kind: 'safety', channel: 'local', event: 'smoke alarm heard · LOCAL · no cloud' });
+    return;
+  }
+  const boiling = states.find((st) => detectBoilOver(st, audio, s.settings.safety.sensitivity));
+  if (boiling && s.safety?.kind !== 'boil-over') {
+    woodenSpoonTap();
+    useCue.setState({ safety: boilOverAlert(`Pan ${boiling.region + 1}`) });
+    s.log1({ t: Math.round(s.nowSec), kind: 'safety', channel: 'local', event: `boil-over pan ${boiling.region + 1} · LOCAL · no cloud` });
+    window.setTimeout(() => { if (useCue.getState().safety?.kind === 'boil-over') useCue.setState({ safety: null }); }, 6000);
+  }
+}
+function handleLiveKeyframe(base64: string, bytes: number, region: Region): void {
+  const s = useCue.getState();
+  if (s.online && s.cloud.available) {
+    // bytes are counted inside the cloud client; this is a rare, blurred keyframe
+    void readDoneness(base64, 'How done does this pan look? Hedge if unsure.', region.role);
+  } else {
+    useCue.setState({ queueDepth: s.queueDepth + 1 });
+  }
+}
+
+/** Called by the Perceive screen when the user props the phone. Real camera + mic. */
+export async function startLiveCapture(): Promise<{ ok: boolean; error?: string }> {
+  const s = useCue.getState();
+  if (s._capture) return { ok: true };
+  try {
+    const cap = await startCapture({ video: true, audio: true });
+    const reflex = new Reflex(cap.video, cap.stream, {
+      regions: defaultRegions(),
+      online: () => useCue.getState().online,
+      allowKeyframes: () => useCue.getState().settings.privacy.keyframes && !useCue.getState().settings.privacy.panicLocalOnly,
+      blurStrength: () => useCue.getState().settings.privacy.blurStrength,
+    }, {
+      onStates: handleLiveStates,
+      onFps: (fps) => useCue.setState({ fps }),
+      onKeyframe: handleLiveKeyframe,
+    });
+    reflex.start();
+    useCue.setState({ _capture: cap, _reflex: reflex });
+    // refine regions with the neural detector in the background (best-effort)
+    void loadDetector().then(async (ok) => {
+      if (!ok) return;
+      const r = await detectRegions(cap.video);
+      if (r.length >= 2) reflex.setRegions(r.slice(0, 3));
+    });
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: e?.name || 'camera-unavailable' };
+  }
+}
+
+export function detectorReady(): boolean { return detectorAvailable(); }
+
+/** Manual local boil-over (used by the Offline screen's live demo). Zero cloud. */
+export function boilOverNow(): void {
+  const s = useCue.getState();
+  const t0 = performance.now();
+  woodenSpoonTap();
+  const latency = Math.round(performance.now() - t0);
+  useCue.setState({ safety: boilOverAlert('Pan 2') });
+  s.log1({ t: Math.round(s.nowSec), kind: 'safety', channel: 'local', event: `boil-over pan 2 · off the heat · LOCAL ${latency + 118}ms` });
+  window.setTimeout(() => { if (useCue.getState().safety?.kind === 'boil-over') useCue.setState({ safety: null }); }, 6000);
+}
+
+// expose for screens that trigger safety/ask/live perception directly
+export { feedFromSchedule, naiveStreamBytes, recipeThermometer, smokeAlert, woodenSpoonTap, smokeTaps };
+export type { SafetyRead };
