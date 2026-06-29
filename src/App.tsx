@@ -25,3 +25,38 @@ const SUBS: Record<Screen, string> = {
 
 const SHOW_MAESTRO: Screen[] = ['perceive'];
 
+function renderScreen(screen: Screen) {
+  switch (screen) {
+    case 'setmeal': return <SetMeal />;
+    case 'perceive': return <Perceive />;
+    case 'score': return <Score />;
+    case 'ask': return <AskSafety />;
+    case 'offline': return <Offline />;
+    case 'log': return <Log />;
+    case 'settings': return <Settings />;
+    case 'engine': return <Engine />;
+    default: return <Score />;
+  }
+}
+
+export function App() {
+  const screen = useCue((s) => s.screen);
+  const wide = screen === 'score' || screen === 'engine';
+  return (
+    <div className="app">
+      <CueDefs />
+      <div className={`device ${wide ? 'wide' : ''}`}>
+        {screen === 'landing' ? (
+          <Landing />
+        ) : (
+          <>
+            <TopBar sub={SUBS[screen]} />
+            {renderScreen(screen)}
+            {SHOW_MAESTRO.includes(screen) && <MaestroCorner />}
+          </>
+        )}
+      </div>
+      <SafetyBanner />
+    </div>
+  );
+}
