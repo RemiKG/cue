@@ -99,3 +99,47 @@ export function CueBanner({ text, offline = false }: { text: string; offline?: b
       </span>
       <span className="cuebanner__text">{text}</span>
       {!offline && (
+        <span className="cuebanner__wave" aria-hidden>
+          {[0, 1, 2, 3, 4].map((i) => <i key={i} style={{ animationDelay: `${i * 0.12}s`, height: 8 + (i % 3) * 7 }} />)}
+        </span>
+      )}
+    </div>
+  );
+}
+
+export function MaestroCorner() {
+  const pose = useCue((s) => s.maestroPose);
+  return (
+    <div className="maestro-corner" aria-hidden>
+      <Maestro pose={pose} />
+    </div>
+  );
+}
+
+export function SafetyBanner() {
+  const safety = useCue((s) => s.safety);
+  const clear = useCue((s) => s.clearSafety);
+  if (!safety) return null;
+  const still = safety.kind === 'thermometer';
+  return (
+    <div className={`safety-banner ${still ? 'still' : ''}`} role="alert" onClick={clear}>
+      <div style={{ width: 34, height: 34, flex: 'none', display: 'grid', placeItems: 'center' }}>
+        {still ? (
+          <svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="13" fill="none" stroke="var(--still)" strokeWidth="2" /><line x1="15" y1="8" x2="15" y2="17" stroke="var(--still)" strokeWidth="2.4" strokeLinecap="round" /><circle cx="15" cy="22" r="1.6" fill="var(--still)" /></svg>
+        ) : (
+          <svg width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="12" fill="none" stroke="var(--ember)" strokeWidth="2.4" strokeDasharray="3 5" /><circle cx="17" cy="17" r="3" fill="var(--ember)" /></svg>
+        )}
+      </div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontWeight: 800, fontSize: 16.5 }}>{safety.text}</div>
+        {safety.detail && <div className="mono" style={{ fontSize: 12, color: 'var(--emberDp)', marginTop: 2 }}>{safety.detail}</div>}
+      </div>
+    </div>
+  );
+}
+
+export function DeadlinePill() {
+  const sch = useCue((s) => s.schedule);
+  if (!sch) return null;
+  return <span className="mono" style={{ fontSize: 13, color: 'var(--ink2)', letterSpacing: 1 }}>DONE {fmtClock(sch.deadlineSec)}</span>;
+}
