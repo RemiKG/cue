@@ -29,3 +29,25 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
+  if (url.pathname.startsWith('/api/')) return; // never cache the Qwen proxy
+
+  if (req.mode === 'navigate') {
+    e.respondWith(fetch(req).catch(() => caches.match('/index.html')));
+    return;
+  }
+  e.respondWith(
+    caches.match(req).then(
+      (hit) =>
+        hit ||
+        fetch(req)
+          .then((res) => {
+            if (res.ok && (url.origin === location.origin || url.host.includes('jsdelivr') || url.host.includes('tfhub'))) {
+              const clone = res.clone();
+              caches.open(CACHE).then((c) => c.put(req, clone));
+            }
+            return res;
+          })
+          .catch(() => caches.match('/index.html')),
+    ),
+  );
+});
