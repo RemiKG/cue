@@ -42,3 +42,33 @@ export function Perceive() {
         </div>
       )}
 
+      <div className="enamel enamel--hi card privacy-card">
+        <span className="privacy-shield">
+          <svg width="42" height="42" viewBox="0 0 42 42"><path d="M21 4 q13 4 13 6 q0 15 -13 24 q-13 -9 -13 -24 q0 -2 13 -6Z" fill="var(--ember)" opacity="0.92" /><path d="M14 20 l5 5 l10 -11" fill="none" stroke="var(--cream)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        </span>
+        <div>
+          <div style={{ fontWeight: 800, fontSize: 17 }}>Even the picture stays home.</div>
+          <div className="muted small">This is a drawing, not a camera feed.</div>
+        </div>
+      </div>
+
+      <div className="tagrail">
+        <Tag label={`bytes → cloud`} value={watchingLocally ? fmtBytes(bytes) : '0.0 KB'} />
+        <Tag label="on-device fps" value={fps || (mode === 'live' ? '…' : 24)} />
+      </div>
+
+      <div className="eyebrow">REFLEX DETECTED · on the phone</div>
+      <div className="row row--wrap" style={{ gap: 8 }}>
+        <span className="chip chip--mono" style={{ borderColor: 'var(--ember)', color: 'var(--emberDp)' }}>pan ✓</span>
+        <span className="chip chip--mono" style={{ borderColor: 'var(--ember)', color: 'var(--emberDp)' }}>pot ✓</span>
+        <span className="chip chip--mono" style={{ borderColor: 'var(--ember)', color: 'var(--emberDp)' }}>board ✓</span>
+        <span className="chip chip--mono" style={{ borderColor: 'var(--ember)', color: 'var(--emberDp)' }}>sizzle {audio && audio.klass !== 'quiet' ? '✓' : '—'}</span>
+        <span className="chip chip--mono">smoke: {smoke}</span>
+      </div>
+
+      <button className="chip chip--accent big-btn" disabled={!meal?.dishes.length} onClick={() => void buildScore()} style={{ marginTop: 6 }}>
+        Build the score →
+      </button>
+    </div>
+  );
+}
