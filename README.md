@@ -132,3 +132,76 @@ npm run dev
 # production — build the client, then serve client + API from one Node process.
 npm run serve
 #   → open http://localhost:8787
+```
+
+To activate the real Qwen Cloud path, copy `.env.example` to `.env` and set
+`DASHSCOPE_API_KEY`. Without it the app runs on the on-device deterministic path and the
+UI says so honestly (the *Engine* screen shows the live cloud status).
+
+### Docker (the deploy target)
+
+```bash
+docker build -t cue .
+docker run -p 8787:8787 -e DASHSCOPE_API_KEY=sk-... cue
+```
+
+---
+
+## What is REAL
+
+Everything below genuinely works end-to-end. A clearly-labelled demo sits *on top* of the
+real path.
+
+- **The input is your own live camera + microphone** (`getUserMedia`) — real frames, real audio.
+- **On-device perception runs locally, in the browser** (non-Qwen): a TensorFlow.js
+  object detector, a classical-CV doneness/state reflex, and a Web Audio classifier + VAD.
+  Measured on a laptop headless: **~22–24 fps**. It emits structured pan-state events.
+- **Raw A/V never leaves the device.** Only distilled states and — occasionally — a single
+  **background-blurred** keyframe (only the pan region legible) are sent to the cloud.
+- **The scheduling and live re-optimization are real, computed reasoning** over the sensed
+  states + constraints (finite burners, two hands, a single finish-together deadline). The
+  money shot is computed on your disruption. Qwen refines/narrates it when a key is present.
+- **Action is local:** the cue is spoken through the phone's speaker; the score sweeps;
+  and the **boil-over / smoke alert fires locally** (a soft wooden-spoon tap via Web Audio)
+  with **zero cloud round-trip**.
+- **Offline is real:** a service worker caches the app + score; lose the network and Cue
+  keeps conducting, tracks states locally, and queues keyframes; reconnect → re-optimize +
+  back-fill. The local safety reflex still fires with the network off.
+- **Persistence is real:** the **Kitchen Score** is append-only **NDJSON in IndexedDB**
+  (exportable / shareable); per-stove **calibrations** persist on the device. Raw
+  camera/mic is never persisted or uploaded.
+- **Recipe grounding is real retrieval** over a **bundled, openly-licensed (CC0)** index —
+  lexical always; `text-embedding-v4` cosine when a key is present. A fixed dataset, not a
+  web crawl.
+
+### Honestly scoped
+
+- **Doneness perception is limited** — reliable on clearly-separable states; on hard reads
+  Cue **hedges and asks you**. Its accuracy is *not* the load-bearing wow; the re-planning is.
+- **Cue never certifies food safe.** The one high-harm read (is the protein cooked
+  through?) is deliberately routed to a **thermometer** — a first-class, non-overridable UI
+  state (the *cool and still* grey), not fine print.
+- **Owner-voice cloning, household pings (comms-MCP), and pantry lists (pantry-MCP)** are
+  opt-in, human-gated extras — never the core.
+- **The measured numbers** ship as measured on commodity hardware (finish-spread, fps, cue
+  latency, bytes/meal); demo targets are noted where a value differs.
+
+---
+
+## Track-5 fit
+
+A Qwen-powered edge device (a spare phone) that **perceives via edge sensors**, **reasons
+via cloud APIs/Skills** (`read-doneness · plan-meal · conduct-timeline · call-cue`), and
+**acts locally**.
+
+- **Edge–cloud orchestration** under bandwidth/latency — the local reflex fires
+  split-second cues; only distilled states + rare keyframes escalate.
+- **Privacy-aware handling** — raw A/V never leaves; keyframes are background-blurred; the
+  UI is an illustrated diagram.
+- **Graceful offline degradation.**
+- **Uses Qwen Cloud APIs** — `dashscope-intl` base URL in `server/qwen.ts`; no self-hosted
+  Qwen (the on-device models are non-Qwen by construction).
+
+## License
+
+MIT — see [LICENSE](LICENSE). The bundled recipe/timing data is original and CC0.
