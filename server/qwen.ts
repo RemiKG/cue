@@ -55,3 +55,35 @@ export async function readDoneness(imageBase64: string, question: string, contex
   try { const j = JSON.parse(out); return { state: j.state || 'unsure', frac: j.frac ?? 0.5, confidence: j.confidence ?? 0.5, hedge: !!j.hedge, text: j.text || '' }; }
   catch { return { state: 'unsure', frac: 0.5, confidence: 0.4, hedge: true, text: out.slice(0, 160) }; }
 }
+
+/** Conduct / re-plan narration (qwen3.7-max). The feasibility math stays client-side. */
+export async function conduct(schedule: any, event: any, context?: string): Promise<{ proposal: string; thinking?: string }> {
+  const sys = 'You are Cue, the calm conductor. Reality diverged mid-cook. In ONE warm second-person sentence, propose the re-plan so everything still lands hot together, then ask "okay?". No lists. Never certify food safe.';
+  const user = `Schedule: ${JSON.stringify(schedule).slice(0, 3000)}. Divergence: ${JSON.stringify(event)}. ${context || ''}`;
+  const proposal = await chat(MODELS.conduct, [{ role: 'system', content: sys }, { role: 'user', content: user }], { enable_thinking: false });
+  return { proposal: proposal.trim() };
+}
+
+/** Embed dishes/ingredients for retrieval grounding (text-embedding-v4). */
+export async function embed(texts: string[]): Promise<number[][]> {
+  const res = await fetch(`${BASE_URL}/embeddings`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${KEY}` },
+    body: JSON.stringify({ model: MODELS.embed, input: texts }),
+  });
+  if (!res.ok) throw new Error(`embed ${res.status}`);
+  const json: any = await res.json();
+  return (json?.data || []).map((d: any) => d.embedding as number[]);
+}
+
+/** Synthesize the spoken cue (qwen3-tts-flash). Returns audio bytes, or throws. */
+export async function tts(text: string, voice: string): Promise<{ buf: ArrayBuffer; type: string }> {
+  // DashScope exposes TTS via an OpenAI-compatible /audio/speech route on some tiers.
+  const res = await fetch(`${BASE_URL}/audio/speech`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${KEY}` },
+    body: JSON.stringify({ model: MODELS.tts, input: text, voice: voice.replace(/^qwen-/, '') || 'Chelsie', response_format: 'mp3' }),
+  });
+  if (!res.ok) throw new Error(`tts ${res.status}`);
+  return { buf: await res.arrayBuffer(), type: res.headers.get('content-type') || 'audio/mpeg' };
+}
