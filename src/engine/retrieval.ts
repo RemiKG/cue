@@ -99,21 +99,39 @@ export function dishInstance(recipe: Recipe, displayName?: string): DishInstance
   return { id: `d${Date.now().toString(36)}_${_iid++}`, recipeId: recipe.id, name: displayName || recipe.name };
 }
 
+/** What happened to each phrase the cook typed — surfaced so grounding is never silent. */
+export interface GroundingNote {
+  query: string;
+  /** the recipe a loose (non-exact) match grounded to. */
+  matched?: string;
+  loose?: boolean;
+  /** nothing in the book grounded it, so it was NOT added. */
+  skipped?: boolean;
+}
+
+/** below this the match is a coincidence, not a dish — skip it and say so. */
+const CONFIDENT = 0.45;
+
 /** Parse a spoken/typed meal into grounded dish instances. */
-export function groundMeal(text: string): { dishes: DishInstance[]; matches: Match[] } {
+export function groundMeal(text: string): { dishes: DishInstance[]; matches: Match[]; notes: GroundingNote[] } {
   const parts = splitMeal(text);
   const dishes: DishInstance[] = [];
   const matches: Match[] = [];
+  const notes: GroundingNote[] = [];
   const seen = new Set<string>();
   for (const p of parts) {
-    const m = bestMatch(p);
-    if (m && !seen.has(m.recipe.id)) {
-      seen.add(m.recipe.id);
-      dishes.push(dishInstance(m.recipe, m.recipe.name));
-      matches.push(m);
+    const m = retrieve(p, 1)[0];
+    if (!m || m.score < CONFIDENT) {
+      notes.push({ query: p, skipped: true });
+      continue;
     }
+    if (seen.has(m.recipe.id)) continue;
+    seen.add(m.recipe.id);
+    dishes.push(dishInstance(m.recipe, m.recipe.name));
+    matches.push(m);
+    if (m.via !== 'exact') notes.push({ query: p, matched: m.recipe.name, loose: true });
   }
-  return { dishes, matches };
+  return { dishes, matches, notes };
 }
 
 /** Cosine re-rank with precomputed embeddings (used by the cloud seam). */

@@ -15,7 +15,7 @@ export const RECIPES: Recipe[] = [
     blurb: 'Wholegrain rice; rinsed, simmered and steamed. The long pole — it starts first.',
     steps: [
       { id: 'rinse', action: 'rinse rice', durationSec: 60, resource: 'hands', attention: 'active', kind: 'prep', cue: 'Rinse the rice — then it goes straight on.' },
-      { id: 'boil', action: 'bring to boil', durationSec: 240, resource: 'burner', attention: 'passive', activeSec: 20, kind: 'cook', cue: 'Start the rice now — so it’s ready with the salmon.', sensorHint: 'rolling boil' },
+      { id: 'boil', action: 'bring to boil', durationSec: 240, resource: 'burner', attention: 'passive', activeSec: 20, kind: 'cook', cue: 'Start the rice now — it needs the longest head start.', sensorHint: 'rolling boil' },
       { id: 'simmer', action: 'simmer', durationSec: 1500, resource: 'burner', attention: 'passive', kind: 'cook', sensorHint: 'gentle simmer, lid on' },
       { id: 'steam', action: 'steam off heat', durationSec: 600, resource: 'burner', attention: 'passive', holdMaxSec: 900, kind: 'cook', doneCue: 'Rice is done — fluff it when you plate.' },
       { id: 'plate', action: 'fluff & serve', durationSec: 25, resource: 'hands', attention: 'active', kind: 'plate' },
@@ -50,7 +50,7 @@ export const RECIPES: Recipe[] = [
     steps: [
       { id: 'season', action: 'pat & season', durationSec: 45, resource: 'hands', attention: 'active', kind: 'prep' },
       { id: 'sear', action: 'sear salmon', durationSec: 480, resource: 'burner', attention: 'active', activeSec: 60, kind: 'cook', cue: 'Salmon on — skin-side down… now.', doneCue: 'Flip the fish… now.', sensorHint: 'seared, edges opaque' },
-      { id: 'rest', action: 'rest', durationSec: 300, resource: 'counter', attention: 'passive', holdMaxSec: 420, kind: 'rest', cue: 'Rest the salmon off the heat — we’ll let the sauce reduce.' },
+      { id: 'rest', action: 'rest', durationSec: 300, resource: 'counter', attention: 'passive', holdMaxSec: 420, kind: 'rest', cue: 'Rest the salmon off the heat — it finishes as it rests.' },
       { id: 'plate', action: 'plate', durationSec: 25, resource: 'hands', attention: 'active', kind: 'plate' },
     ],
   },

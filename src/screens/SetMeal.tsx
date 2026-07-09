@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useCue } from '../state/store';
 import { Maestro } from '../brand';
-import { getRecipe, groundMeal, groundedCount } from '../engine/retrieval';
+import { getRecipe, groundMeal, groundedCount, type GroundingNote } from '../engine/retrieval';
 import type { DishInstance } from '../engine/types';
 
 function dishTime(recipeId: string): string {
@@ -28,16 +28,18 @@ export function SetMeal() {
   const mode0: Mode = 'type';
   const [mode, setMode] = useState<Mode>(mode0);
   const [text, setText] = useState('');
+  const [notes, setNotes] = useState<GroundingNote[]>([]);
 
   const dishes = meal?.dishes || [];
   const res = meal?.resources || { burners: 3, oven: true, hands: 2 };
 
   const addFrom = (t: string) => {
     if (!t.trim()) return;
-    const { dishes: found } = groundMeal(t);
+    const { dishes: found, notes: gnotes } = groundMeal(t);
     const have = new Set(dishes.map((d) => d.recipeId));
     const merged: DishInstance[] = [...dishes, ...found.filter((d) => !have.has(d.recipeId))];
     setDishes(merged);
+    setNotes(gnotes);
     setText('');
   };
   const removeDish = (id: string) => setDishes(dishes.filter((d) => d.id !== id));
@@ -72,6 +74,18 @@ export function SetMeal() {
             onKeyDown={(e) => e.key === 'Enter' && addFrom(text)}
           />
           <button className="chip chip--accent" onClick={() => addFrom(text)}>Add</button>
+        </div>
+      )}
+
+      {notes.length > 0 && (
+        <div className="stack" style={{ gap: 3 }}>
+          {notes.map((n, i) => (
+            <div key={i} className="muted small">
+              {n.skipped
+                ? <>“{n.query}” isn’t in my recipe book yet — skipped.</>
+                : <>“{n.query}” → closest in my book: <b>{n.matched}</b>. Tap × below if that’s not it.</>}
+            </div>
+          ))}
         </div>
       )}
 

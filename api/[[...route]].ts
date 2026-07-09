@@ -32,9 +32,9 @@ export default async function handler(req: any, res: any): Promise<void> {
     const body: any = req.body && typeof req.body === 'object' ? req.body : {};
 
     if (route === '/plan') {
-      const sys = 'You are Cue, a kitchen conductor. Given dishes and a kitchen, reason about a resource-constrained schedule that lands everything hot together. Reply ONLY as JSON: {"rationale": string, "adjustments": {"<dishName>": <deltaSeconds>}}. Keep rationale to one warm sentence.';
+      const sys = 'You are Cue, a kitchen conductor. Given dishes and a kitchen, reason about a resource-constrained schedule that lands everything hot together. Reply ONLY as JSON: {"rationale": string, "adjustments": {"<dishName>": <deltaSeconds>}}. Keep rationale to one warm sentence about ordering and timing only — never claim which burner or oven a dish uses; the scheduler assigns those.';
       const user = `Dishes: ${JSON.stringify(body.dishes)}. Kitchen: ${JSON.stringify(body.resources)}.`;
-      const out = await chat(MODELS.plan, [{ role: 'system', content: sys }, { role: 'user', content: user }], { response_format: { type: 'json_object' } });
+      const out = await chat(MODELS.plan, [{ role: 'system', content: sys }, { role: 'user', content: user }], { response_format: { type: 'json_object' }, enable_thinking: false });
       let r: any; try { const j = JSON.parse(out); r = { rationale: j.rationale || '', adjustments: j.adjustments || {} }; } catch { r = { rationale: out.slice(0, 200), adjustments: {} }; }
       return send({ ok: true, source: 'qwen', ...r });
     }

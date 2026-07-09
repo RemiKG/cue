@@ -38,9 +38,9 @@ async function chat(model: string, messages: ChatMsg[], extra: Record<string, un
 
 /** Plan: dishes + constraints → schedule rationale/adjustments (qwen3.7-plus, structured). */
 export async function planMeal(dishes: any[], resources: any): Promise<{ rationale: string; adjustments: Record<string, number> }> {
-  const sys = 'You are Cue, a kitchen conductor. Given dishes and a kitchen, reason about a resource-constrained schedule that lands everything hot together. Reply ONLY as JSON: {"rationale": string, "adjustments": {"<dishName>": <deltaSeconds>}}. Keep rationale to one warm sentence.';
+  const sys = 'You are Cue, a kitchen conductor. Given dishes and a kitchen, reason about a resource-constrained schedule that lands everything hot together. Reply ONLY as JSON: {"rationale": string, "adjustments": {"<dishName>": <deltaSeconds>}}. Keep rationale to one warm sentence about ordering and timing only — never claim which burner or oven a dish uses; the scheduler assigns those.';
   const user = `Dishes: ${JSON.stringify(dishes)}. Kitchen: ${JSON.stringify(resources)}.`;
-  const out = await chat(MODELS.plan, [{ role: 'system', content: sys }, { role: 'user', content: user }], { response_format: { type: 'json_object' } });
+  const out = await chat(MODELS.plan, [{ role: 'system', content: sys }, { role: 'user', content: user }], { response_format: { type: 'json_object' }, enable_thinking: false });
   try { const j = JSON.parse(out); return { rationale: j.rationale || '', adjustments: j.adjustments || {} }; } catch { return { rationale: out.slice(0, 200), adjustments: {} }; }
 }
 

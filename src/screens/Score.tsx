@@ -44,9 +44,18 @@ export function Score() {
   const bytes = mode === 'live' ? cloudMeter.bytes() : online ? 312 * 1024 : 0;
   const upcoming = shown.steps.filter((s) => s.kind === 'cook' && s.startSec > nowSec).slice(0, 2);
 
+  // until a real cue fires, the banner conducts from the actual schedule — never a canned line
+  const nextUp = shown.steps.filter((s) => s.kind === 'cook' && s.startSec >= nowSec).sort((a, b) => a.startSec - b.startSec)[0];
+  const fallbackCue = nextUp
+    ? nextUp.startSec - nowSec < 30
+      ? `Start the ${nextUp.dishName.toLowerCase()} now — everything lands together at ${fmtClock(shown.deadlineSec)}.`
+      : `Next: ${nextUp.dishName.toLowerCase()} at ${fmtClock(nextUp.startSec)} — everything lands together at ${fmtClock(shown.deadlineSec)}.`
+    : `All dishes are on — everything lands together at ${fmtClock(shown.deadlineSec)}.`;
+  const finaleDishes = [...new Set(shown.steps.map((s) => s.dishName))];
+
   return (
     <div className="screen">
-      <CueBanner text={currentCue || 'Start the rice now — so it’s ready with the salmon.'} offline={!online} />
+      <CueBanner text={currentCue || fallbackCue} offline={!online} />
 
       <div className="enamel enamel--recessed score-wrap">
         <StoveFeed className="stove-bg" dials={false} w={640} h={360} />
@@ -107,7 +116,7 @@ export function Score() {
           <div className="enamel enamel--recessed card--tight card">
             <div className="eyebrow">THE FINALE STILL HOLDS</div>
             <div style={{ fontWeight: 700, marginTop: 4 }}>
-              Rice, salmon, beans, sauce — <span style={{ color: 'var(--emberDp)' }}>all still land together, hot.</span>
+              {finaleDishes.join(', ')} — <span style={{ color: 'var(--emberDp)' }}>{finaleDishes.length > 1 ? 'all still land together, hot.' : 'still lands on time, hot.'}</span>
             </div>
           </div>
         </>
