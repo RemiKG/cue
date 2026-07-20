@@ -73,16 +73,21 @@ export function reoptimize({ meal, prev, event, nowSec, qwenProposal }: Reoptimi
     };
     next = schedule(newMeal);
     const rc = getRecipe(event.newRecipeId);
-    const min = Math.round((rc?.steps.filter((s) => s.kind !== 'plate').reduce((a, s) => a + s.durationSec, 0) || 0) / 60);
-    proposalText = `That's brown rice — ${min} minutes, not 20. I'll start it now, push the salmon to the ${fmtClock(next.steps.find((s) => s.dishId !== event.dishId && s.kind === 'cook')?.startSec ?? 0).split(':')[0]}-minute mark, and hold it off the heat while the sauce reduces, so everything still lands together. Plate a little later — okay?`;
+    const mins = (rid?: string) => Math.round((getRecipe(rid || '')?.steps.filter((s) => s.kind !== 'plate').reduce((a, s) => a + s.durationSec, 0) || 0) / 60);
+    const min = mins(event.newRecipeId);
+    const oldMin = mins(meal.dishes.find((d) => d.id === event.dishId)?.recipeId);
+    const pushed = next.steps.find((s) => s.dishId !== event.dishId && s.kind === 'cook');
+    proposalText = `That's ${(rc?.name || 'a slower swap').toLowerCase()} — ${min} minutes${oldMin && oldMin !== min ? `, not ${oldMin}` : ''}. I'll start it now${pushed ? `, slide the ${pushed.dishName.toLowerCase()} to the ${fmtClock(pushed.startSec).split(':')[0]}-minute mark,` : ''} so everything still lands together. Plate a little later — okay?`;
   } else if (event.kind === 'behind') {
     const N = event.behindSec ?? 120;
     next = shiftFuture(prev, nowSec, N);
-    proposalText = `You're ${Math.round(N / 60)} minutes behind on the sear. I'll hold the beans and cue you to plate ${Math.round(N / 60)} minutes later — everything still lands hot. Okay?`;
+    const cur = prev.steps.find((s) => s.kind === 'cook' && s.startSec <= nowSec && s.endSec > nowSec);
+    proposalText = `You're ${Math.round(N / 60)} minutes behind${cur ? ` on the ${cur.dishName.toLowerCase()}` : ''}. I'll slide everything that hasn't started and cue you to plate ${Math.round(N / 60)} minutes later — it all still lands hot. Okay?`;
   } else if (event.kind === 'ran-hot') {
     const id = event.dishId || meal.dishes[0]?.id;
     next = pullEarly(prev, id, 30);
-    proposalText = `Burner ran hotter than I planned — the salmon's searing fast. Pull it thirty seconds early and rest it a little longer; the rest of the score still holds.`;
+    const hotName = (meal.dishes.find((d) => d.id === id)?.name || 'pan').toLowerCase();
+    proposalText = `A burner ran hotter than I planned — the ${hotName} is cooking fast. Pull it thirty seconds early and rest it a little longer; the rest of the score still holds.`;
   } else {
     next = prev;
     proposalText = 'Adjusting the plan to what I can see.';

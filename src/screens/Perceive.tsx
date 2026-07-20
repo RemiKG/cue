@@ -54,16 +54,16 @@ export function Perceive() {
 
       <div className="tagrail">
         <Tag label={`bytes → cloud`} value={watchingLocally ? fmtBytes(bytes) : '0.0 KB'} />
-        <Tag label="on-device fps" value={fps || (mode === 'live' ? '…' : 24)} />
+        <Tag label="on-device fps" value={fps || (mode === 'live' && capture ? '…' : '—')} />
       </div>
 
-      <div className="eyebrow">REFLEX DETECTED · on the phone</div>
+      <div className="eyebrow">{capture ? 'REFLEX DETECTED · on the phone' : 'REFLEX WATCHES FOR · once a camera is granted'}</div>
       <div className="row row--wrap" style={{ gap: 8 }}>
-        <span className="chip chip--mono" style={{ borderColor: 'var(--ember)', color: 'var(--emberDp)' }}>pan ✓</span>
-        <span className="chip chip--mono" style={{ borderColor: 'var(--ember)', color: 'var(--emberDp)' }}>pot ✓</span>
-        <span className="chip chip--mono" style={{ borderColor: 'var(--ember)', color: 'var(--emberDp)' }}>board ✓</span>
-        <span className="chip chip--mono" style={{ borderColor: 'var(--ember)', color: 'var(--emberDp)' }}>sizzle {audio && audio.klass !== 'quiet' ? '✓' : '—'}</span>
-        <span className="chip chip--mono">smoke: {smoke}</span>
+        <span className="chip chip--mono" style={{ borderColor: 'var(--ember)', color: 'var(--emberDp)' }}>pan {capture ? '✓' : '—'}</span>
+        <span className="chip chip--mono" style={{ borderColor: 'var(--ember)', color: 'var(--emberDp)' }}>pot {capture ? '✓' : '—'}</span>
+        <span className="chip chip--mono" style={{ borderColor: 'var(--ember)', color: 'var(--emberDp)' }}>board {capture ? '✓' : '—'}</span>
+        <span className="chip chip--mono" style={{ borderColor: 'var(--ember)', color: 'var(--emberDp)' }}>sizzle {capture && audio && audio.klass !== 'quiet' ? '✓' : '—'}</span>
+        <span className="chip chip--mono">smoke: {capture ? smoke : '—'}</span>
       </div>
 
       <button className="chip chip--accent big-btn" disabled={!meal?.dishes.length} onClick={() => void buildScore()} style={{ marginTop: 6 }}>

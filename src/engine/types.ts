@@ -125,7 +125,10 @@ export interface ReplanResult {
   stillLandsTogether: boolean;
   newDeadlineSec: number;
   prevDeadlineSec: number;
+  /** the deterministic local re-solve alone, ms. */
   replanLatencyMs: number;
+  /** the full round-trip the cook actually waited (incl. cloud narration), ms. */
+  roundTripMs?: number;
   source: 'qwen' | 'on-device';
 }
 

@@ -2,7 +2,7 @@
 // per-stove calibrations, and settings all live on the DEVICE (IndexedDB). Raw
 // camera/mic is NEVER persisted. This is real persistence — reload and it's here.
 import { get, set, keys, del, createStore } from 'idb-keyval';
-import type { LogEntry } from './types';
+import type { LogEntry, MealSpec, Schedule } from './types';
 
 const store = createStore('cue-db', 'cue');
 
@@ -79,4 +79,35 @@ export async function wipeScore(sessionId: string): Promise<void> {
 
 export function toNdjson(entries: LogEntry[]): string {
   return entries.map((e) => JSON.stringify(e)).join('\n') + '\n';
+}
+
+// ── mid-cook session snapshot ────────────────────────────────────────────────
+// A live cook is saved every few seconds so an accidental reload resumes the
+// score instead of dropping the cook back on the landing page.
+export interface SessionSnapshot {
+  v: 1;
+  savedAt: number; // wall-clock ms
+  mode: 'live';
+  meal: MealSpec;
+  riceBrown: boolean;
+  schedule: Schedule; // the CURRENT (possibly re-planned) schedule
+  nowSec: number;
+  log: LogEntry[];
+  sessionId: string;
+}
+const SESSION_KEY = 'cue-session-v1';
+
+export function saveSession(s: SessionSnapshot): void {
+  try { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); } catch { /* ignore */ }
+}
+export function loadSession(): SessionSnapshot | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw) as SessionSnapshot;
+    return s && s.v === 1 && s.schedule && s.meal ? s : null;
+  } catch { return null; }
+}
+export function clearSession(): void {
+  try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
 }

@@ -32,6 +32,7 @@ export function SetMeal() {
 
   const dishes = meal?.dishes || [];
   const res = meal?.resources || { burners: 3, oven: true, hands: 2 };
+  const hasRice = dishes.some((d) => d.recipeId === 'white-rice' || d.recipeId === 'brown-rice');
 
   const addFrom = (t: string) => {
     if (!t.trim()) return;
@@ -76,6 +77,9 @@ export function SetMeal() {
           <button className="chip chip--accent" onClick={() => addFrom(text)}>Add</button>
         </div>
       )}
+      {mode === 'snap' && (
+        <div className="muted small">No camera needed for this one — paste the recipe text and I’ll pull out the dishes.</div>
+      )}
 
       {notes.length > 0 && (
         <div className="stack" style={{ gap: 3 }}>
@@ -107,14 +111,16 @@ export function SetMeal() {
       </div>
 
       <div className="enamel card stack" style={{ gap: 14 }}>
-        <div className="card-title" style={{ fontSize: 16 }}>Two quick things —</div>
-        <div className="row spread">
-          <span style={{ fontWeight: 700 }}>Brown rice or white?</span>
-          <span className="seg">
-            <button className={riceBrown ? 'on' : ''} onClick={() => setRiceBrown(true)}>Brown</button>
-            <button className={!riceBrown ? 'on' : ''} onClick={() => setRiceBrown(false)}>White</button>
-          </span>
-        </div>
+        <div className="card-title" style={{ fontSize: 16 }}>{hasRice ? 'Two quick things —' : 'One quick thing —'}</div>
+        {hasRice && (
+          <div className="row spread">
+            <span style={{ fontWeight: 700 }}>Brown rice or white?</span>
+            <span className="seg">
+              <button className={riceBrown ? 'on' : ''} onClick={() => setRiceBrown(true)}>Brown</button>
+              <button className={!riceBrown ? 'on' : ''} onClick={() => setRiceBrown(false)}>White</button>
+            </span>
+          </div>
+        )}
         <div className="row spread">
           <span style={{ fontWeight: 700 }}>Burners free?</span>
           <span className="hobset">
@@ -124,9 +130,11 @@ export function SetMeal() {
             <button className="ovenbox" style={{ borderColor: res.oven ? 'var(--ember)' : 'var(--rim)' }} onClick={() => setResources({ oven: !res.oven })} aria-label="oven" />
           </span>
         </div>
-        <div className="muted small" style={{ fontStyle: 'italic' }}>
-          {riceBrown ? 'brown → it starts first (≈40 min).' : 'white rice → ≈20 min.'}
-        </div>
+        {hasRice && (
+          <div className="muted small" style={{ fontStyle: 'italic' }}>
+            {riceBrown ? 'brown → it starts first (≈40 min).' : 'white rice → ≈20 min.'}
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'grid', placeItems: 'center', gap: 6, marginTop: 4 }}>

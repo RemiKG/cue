@@ -25,7 +25,9 @@ export function Score() {
   const dismiss = useCue((s) => s.dismissReplan);
   const dishesHot = useCue((s) => s.dishesHot);
   const cueLatency = useCue((s) => s.cueLatencyMs);
-  const mode = useCue((s) => s.mode);
+  const running = useCue((s) => s.running);
+  const meal = useCue((s) => s.meal);
+  const inject = useCue((s) => s.injectDivergence);
 
   const shown = replan ? replan.schedule : schedule;
   const movedMap = useMemo(() => (replan ? new Map(replan.moved.map((m) => [m.key, m.fromAt])) : null), [replan]);
@@ -41,8 +43,10 @@ export function Score() {
   }
 
   const spread = shown.finishSpreadSec;
-  const bytes = mode === 'live' ? cloudMeter.bytes() : online ? 312 * 1024 : 0;
+  const bytes = cloudMeter.bytes(); // the real meter, in every mode
   const upcoming = shown.steps.filter((s) => s.kind === 'cook' && s.startSec > nowSec).slice(0, 2);
+  const replanMs = replan ? replan.roundTripMs ?? replan.replanLatencyMs : 0;
+  const hasWhiteRice = !!meal?.dishes.some((d) => d.recipeId === 'white-rice');
 
   // until a real cue fires, the banner conducts from the actual schedule — never a canned line
   const nextUp = shown.steps.filter((s) => s.kind === 'cook' && s.startSec >= nowSec).sort((a, b) => a.startSec - b.startSec)[0];
@@ -86,6 +90,19 @@ export function Score() {
             <Tag label="dishes hot" value={dishesHot ? `${dishesHot} ✓` : '— soon'} />
           </div>
 
+          {running && !finished && (
+            <div className="enamel enamel--hi card--tight card">
+              <div className="eyebrow" style={{ color: 'var(--emberDp)' }}>★ REALITY DIVERGED? TELL ME — I RE-PLAN LIVE</div>
+              <div className="btn-row row--wrap" style={{ marginTop: 8, flexWrap: 'wrap' }}>
+                {hasWhiteRice && (
+                  <button className="chip chip--accent" onClick={() => void inject('ingredient-swap')}>It’s actually brown rice</button>
+                )}
+                <button className="chip" onClick={() => void inject('behind')}>I fell behind</button>
+                <button className="chip" onClick={() => void inject('ran-hot')}>A pan ran hot</button>
+              </div>
+            </div>
+          )}
+
           <div style={{ display: 'grid', placeItems: 'end', minHeight: 8 }} />
           <div className="maestro-corner"><Maestro pose={finished ? 'settle' : pose} /></div>
         </>
@@ -108,7 +125,7 @@ export function Score() {
           </div>
 
           <div className="tagrail">
-            <Tag label="re-plan" value={replan.replanLatencyMs < 1000 ? `${Math.max(1, replan.replanLatencyMs)} ms` : `${(replan.replanLatencyMs / 1000).toFixed(1)} s`} />
+            <Tag label={replan.source === 'qwen' ? 're-plan · qwen + local' : 're-plan · local'} value={replanMs < 1000 ? `${Math.max(1, replanMs)} ms` : `${(replanMs / 1000).toFixed(1)} s`} />
             <Tag label="still lands together" value={replan.stillLandsTogether ? `✓ ${fmtClock(replan.newDeadlineSec)}` : '⚠ check'} />
             <Tag label="spread" value={`${shown.finishSpreadSec} s`} />
           </div>

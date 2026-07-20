@@ -1,6 +1,7 @@
 // chrome.tsx — persistent UI: the top bar, the navigation sheet, the cue banner, the
 // tag rail, the Maestro corner, and the (never-red) safety banner.
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Logomark, Maestro } from '../brand';
 import { useCue, type Screen } from '../state/store';
 import { fmtClock } from '../engine/scheduler';
@@ -12,6 +13,7 @@ export function LivePill() {
   const mode = useCue((s) => s.mode);
   if (!online) return <span className="pill pill--offline"><span className="dot" />OFFLINE</span>;
   if (mode === 'idle' && !running) return <span className="pill">ready</span>;
+  if (mode === 'demo') return <span className="pill"><span className="dot" />demo</span>;
   return <span className="pill pill--live"><span className="dot" />live</span>;
 }
 
@@ -32,8 +34,9 @@ export function TopBar({ sub }: { sub?: string }) {
   const reset = useCue((s) => s.reset);
   const inject = useCue((s) => s.injectDivergence);
   const running = useCue((s) => s.running);
-  const riceBrown = useCue((s) => s.riceBrown);
+  const meal = useCue((s) => s.meal);
   const [disrupt, setDisrupt] = useState(false);
+  const hasWhiteRice = !!meal?.dishes.some((d) => d.recipeId === 'white-rice');
 
   const go = (k: Screen) => { setScreen(k); setMenu(false); };
   const breakPlan = (k: DivergenceKind) => { void inject(k); setDisrupt(false); setMenu(false); setScreen('score'); };
@@ -50,7 +53,9 @@ export function TopBar({ sub }: { sub?: string }) {
         <button className="iconbtn" aria-label="Menu" onClick={() => setMenu(true)}>☰</button>
       </div>
 
-      {menu && (
+      {menu && createPortal(
+        // portaled to <body>: the topbar's backdrop-filter creates a containing
+        // block that would otherwise trap this fixed scrim inside the 58px bar.
         <div className="scrim" onClick={() => setMenu(false)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             <div className="eyebrow" style={{ marginBottom: 8 }}>GO TO</div>
@@ -68,10 +73,10 @@ export function TopBar({ sub }: { sub?: string }) {
                 </button>
                 {disrupt && (
                   <div className="stack" style={{ padding: '8px 8px 4px' }}>
-                    {riceBrown ? null : (
+                    {hasWhiteRice && (
                       <button className="chip chip--accent" onClick={() => breakPlan('ingredient-swap')}>It’s actually brown rice</button>
                     )}
-                    <button className="chip" onClick={() => breakPlan('behind')}>I fell behind on the sear</button>
+                    <button className="chip" onClick={() => breakPlan('behind')}>I fell behind</button>
                     <button className="chip" onClick={() => breakPlan('ran-hot')}>A pan ran hot</button>
                   </div>
                 )}
@@ -81,7 +86,8 @@ export function TopBar({ sub }: { sub?: string }) {
               <span className="n">⌂</span> Restart · home
             </button>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

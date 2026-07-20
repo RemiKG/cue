@@ -7,6 +7,8 @@ import { useCue, boilOverNow } from '../state/store';
 import { Score as ScoreBoard } from '../brand/Score';
 import { Gauge, Tag } from '../brand/widgets';
 import { buildSpec } from '../engine/scoreSpec';
+import { fmtBytes } from '../perception/metrics';
+import { cloudMeter } from '../cloud/qwen';
 
 export function Offline() {
   const online = useCue((s) => s.online);
@@ -63,8 +65,8 @@ export function Offline() {
       </div>
 
       <div className="tagrail">
-        <Tag label="bytes → cloud" value={online ? '312 KB' : '0.0'} />
-        <Tag label="offline queue" value={`${offlineForced ? Math.max(queue, 6) : queue} keyframes`} />
+        <Tag label="bytes → cloud" value={online ? fmtBytes(cloudMeter.bytes()) : '0.0'} />
+        <Tag label="offline queue" value={`${queue} keyframes`} />
       </div>
 
       {online && (offlineForced || queue > 0) && (
